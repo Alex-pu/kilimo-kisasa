@@ -1,8 +1,9 @@
+import json
+
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from pathlib import Path
 from typing import Any
-from typing import List
 from typing import Optional
 
 
@@ -32,7 +33,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     
     # CORS
-    cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8080"]
+    cors_origins: Any = ["http://localhost:3000", "http://localhost:8080"]
     
     # Server
     host: str = "0.0.0.0"
@@ -67,9 +68,26 @@ class Settings(BaseSettings):
                 return True
         return value
 
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                return []
+            if normalized.startswith("["):
+                parsed = json.loads(normalized)
+                return [str(item).strip() for item in parsed if str(item).strip()]
+            return [item.strip() for item in normalized.split(",") if item.strip()]
+        return [str(value).strip()]
+
     @field_validator("cors_origins", mode="after")
     @classmethod
-    def include_mobile_dev_origins(cls, value: List[str]) -> List[str]:
+    def include_mobile_dev_origins(cls, value: list[str]) -> list[str]:
         dev_origins = [
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
