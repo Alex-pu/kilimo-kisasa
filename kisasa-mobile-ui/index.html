@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ff4500" />
+    <title>Kilimo Kisasa</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <button class="icon-button" id="menuButton" type="button" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <a class="brand" href="#feed" aria-label="Kilimo Kisasa home">
+          <span class="brand-mark">K</span>
+          <span>Kisasa</span>
+        </a>
+        <button class="pill-button" id="authButton" type="button">Log in</button>
+      </header>
+
+      <main class="app-shell">
+        <aside class="left-rail" id="leftRail">
+          <nav class="rail-card">
+            <a class="rail-link active" href="#feed">Home feed</a>
+            <a class="rail-link" href="#jack">Jack assistant</a>
+            <a class="rail-link" href="#agrovets">Agrovets</a>
+            <a class="rail-link" href="#productsSide">Inputs</a>
+            <a class="rail-link" href="#ask">Ask experts</a>
+          </nav>
+        </aside>
+
+        <section class="feed-column">
+          <div class="composer" id="ask">
+            <div class="composer-avatar">K</div>
+            <button class="composer-input" id="openIssueModal" type="button">
+              Ask about a crop, livestock, pest, or input problem
+            </button>
+          </div>
+
+          <div class="feed-tabs" role="tablist" aria-label="Feed filters">
+            <button class="tab active" data-filter="all" type="button">Hot</button>
+            <button class="tab" data-filter="educational" type="button">Education</button>
+            <button class="tab" data-filter="farming_news" type="button">News</button>
+            <button class="tab" data-filter="urgent" type="button">Urgent</button>
+            <button class="tab" data-filter="open" type="button">Open</button>
+            <button class="tab" data-filter="resolved" type="button">Solved</button>
+          </div>
+
+          <div class="mobile-search">
+            <input id="mobileSearch" type="search" placeholder="Search issues, products, agrovets" />
+          </div>
+
+          <div class="status-strip" id="statusStrip" hidden></div>
+          <div class="feed-list" id="feedList"></div>
+
+          <section class="explore-page" id="agrovetsPage" hidden>
+            <div class="explore-header">
+              <div>
+                <p class="eyebrow">Marketplace</p>
+                <h1>Agrovets</h1>
+              </div>
+              <button class="primary-button" id="startSellingButton" type="button">Start selling</button>
+            </div>
+            <div class="mobile-search always">
+              <input id="agrovetSearch" type="search" placeholder="Search shops by name or town" />
+            </div>
+            <div class="shop-grid" id="agrovetExploreList"></div>
+          </section>
+
+          <section class="admin-page" id="adminPage" hidden>
+            <div class="explore-header">
+              <div>
+                <p class="eyebrow">Restricted</p>
+                <h1>Admin</h1>
+              </div>
+              <button class="primary-button" id="adminLoginButton" type="button">Admin login</button>
+            </div>
+            <section class="side-card" id="adminPanel" hidden>
+              <h2>Expert approvals</h2>
+              <div id="adminPageApplicationList" class="compact-list"></div>
+            </section>
+            <section class="side-card" id="adminAgrovetsPanel" hidden>
+              <div class="panel-heading">
+                <h2>Managed agrovets</h2>
+                <button class="text-button" id="adminAddAgrovetButton" type="button">Add shop</button>
+              </div>
+              <div id="adminAgrovetList" class="compact-list"></div>
+            </section>
+            <section class="side-card" id="adminJackKnowledgePanel" hidden>
+              <div class="panel-heading">
+                <h2>Jack knowledge</h2>
+                <span class="badge">notes</span>
+              </div>
+              <form class="admin-form" id="jackKnowledgeForm">
+                <input id="jackKnowledgeFilename" name="filename" type="text" required minlength="3" placeholder="document-name.md" />
+                <textarea id="jackKnowledgeContent" name="content" rows="8" required minlength="10" placeholder="# Topic&#10;&#10;Symptoms:&#10;Action:&#10;Safety notes:"></textarea>
+                <button class="primary-button" type="submit">Save note</button>
+              </form>
+              <div id="adminJackKnowledgeList" class="compact-list"></div>
+            </section>
+          </section>
+
+          <section class="jack-page" id="jackPage" hidden>
+            <div class="explore-header">
+              <div>
+                <p class="eyebrow">Farm assistant</p>
+                <h1>Jack</h1>
+              </div>
+              <span class="badge">chatbot</span>
+            </div>
+            <div class="jack-chat" id="jackMessages"></div>
+            <form class="jack-form" id="jackChatForm">
+              <textarea id="jackContext" name="context" rows="5" placeholder="Optional notes for Jack to use first: paste advisory text, labels, symptoms, or training notes"></textarea>
+              <textarea id="jackPrompt" name="prompt" rows="3" required placeholder="Ask Jack about crops, pests, soil, livestock, inputs, or market questions"></textarea>
+              <button class="primary-button" type="submit">Ask Jack</button>
+            </form>
+          </section>
+        </section>
+
+        <aside class="right-rail">
+          <section class="side-card">
+            <div class="side-cover"></div>
+            <h2>Kilimo Kisasa</h2>
+            <p>Farm questions, expert advice, and trusted agrovet inputs in one place.</p>
+            <dl class="stats">
+              <div><dt id="issueCount">0</dt><dd>issues</dd></div>
+              <div><dt id="agrovetCount">0</dt><dd>agrovets</dd></div>
+              <div><dt id="productCount">0</dt><dd>inputs</dd></div>
+            </dl>
+            <button class="primary-button full" id="sideAskButton" type="button">Create post</button>
+          </section>
+
+          <section class="side-card" id="expertApplyCard" hidden>
+            <h2>Become an expert</h2>
+            <p>Submit your professional profile for admin review.</p>
+            <button class="primary-button full" id="openExpertApplication" type="button">Apply</button>
+            <div class="compact-list" id="myApplicationList"></div>
+          </section>
+
+          <section class="side-card" id="agrovetRegisterCard" hidden>
+            <h2>Register agrovet</h2>
+            <p>Add your shop location so nearby farmers can find you.</p>
+            <button class="primary-button full" id="openAgrovetRegistration" type="button">Register shop</button>
+          </section>
+
+          <section class="side-card" id="myCatalogueCard" hidden>
+            <h2>My catalogue</h2>
+            <button class="primary-button full" id="openProductModal" type="button">Add product</button>
+            <div id="myCatalogueList" class="compact-list"></div>
+          </section>
+
+          <section class="side-card" id="adminApplicationsCard" hidden>
+            <h2>Expert approvals</h2>
+            <div id="adminApplicationList" class="compact-list"></div>
+          </section>
+
+          <section class="side-card" id="agrovetsSide">
+            <h2>Trusted agrovets</h2>
+            <div id="agrovetList" class="compact-list"></div>
+          </section>
+
+          <section class="side-card" id="productsSide">
+            <h2>Inputs in stock</h2>
+            <div id="productList" class="compact-list"></div>
+          </section>
+        </aside>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Primary">
+        <a href="#feed" class="bottom-link active">Home</a>
+        <a href="#jack" class="bottom-link">Jack</a>
+        <button id="bottomAskButton" class="bottom-create" type="button">+</button>
+        <a href="#agrovets" class="bottom-link">Agrovets</a>
+        <button id="bottomAuthButton" class="bottom-link" type="button">Login</button>
+      </nav>
+    </div>
+
+    <dialog class="modal" id="authModal">
+      <form class="modal-card" id="authForm" method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Account</p>
+            <h2 id="authTitle">Log in</h2>
+          </div>
+          <button class="icon-close" type="button" data-close-modal>&times;</button>
+        </div>
+        <label>
+          Email or username
+          <input name="identity" type="text" autocomplete="email" required minlength="3" />
+        </label>
+        <label id="nameField" hidden>
+          Display name
+          <input name="display_name" type="text" autocomplete="name" minlength="2" />
+        </label>
+        <label>
+          Password
+          <input name="password" type="password" autocomplete="current-password" required minlength="6" />
+        </label>
+        <label id="verifyField" hidden>
+          Confirm password
+          <input name="passwordVerify" type="password" autocomplete="new-password" minlength="6" />
+        </label>
+        <button class="primary-button full" type="submit" id="authSubmit">Log in</button>
+        <button class="text-button" type="button" id="toggleAuthMode">Need an account? Sign up</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="issueModal">
+      <form class="modal-card" id="issueForm" method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">New post</p>
+            <h2 id="issueModalTitle">Ask the community</h2>
+          </div>
+          <button class="icon-close" type="button" data-close-modal>&times;</button>
+        </div>
+        <label id="postTypeField" hidden>
+          Post type
+          <select id="postTypeSelect" name="post_type">
+            <option value="issue">Issue or question</option>
+            <option value="educational">Educational post</option>
+            <option value="farming_news">Farming news</option>
+          </select>
+        </label>
+        <label>
+          Title
+          <input name="title" type="text" required minlength="5" placeholder="Tomato leaves have brown spots" />
+        </label>
+        <label>
+          Category
+          <select name="category">
+            <option value="crop_disease">Crop disease</option>
+            <option value="pest_management">Pest management</option>
+            <option value="soil_health">Soil health</option>
+            <option value="water_management">Water management</option>
+            <option value="fertilizer">Fertilizer</option>
+            <option value="seed_quality">Seed quality</option>
+            <option value="weather">Weather</option>
+            <option value="market_price">Market price</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label>
+          Description
+          <textarea name="description" rows="5" required placeholder="Describe the symptoms, crop, location, and what you have tried."></textarea>
+        </label>
+        <label>
+          Location
+          <input name="location_name" type="text" placeholder="Nairobi, Kenya" />
+        </label>
+        <label>
+          Image
+          <input id="issueImage" name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" />
+          <span class="file-preview" id="issueImagePreview"></span>
+        </label>
+        <label class="check-row">
+          <input name="is_urgent" type="checkbox" />
+          Mark as urgent
+        </label>
+        <button class="primary-button full" type="submit">Post issue</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="expertApplicationModal">
+      <form class="modal-card" id="expertApplicationForm" method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Expert review</p>
+            <h2>Apply as an expert</h2>
+          </div>
+          <button class="icon-close" type="button" data-close-modal>&times;</button>
+        </div>
+        <label>
+          LinkedIn profile
+          <input name="linkedin_url" type="url" placeholder="https://www.linkedin.com/in/..." required />
+        </label>
+        <label>
+          Education
+          <textarea name="education" rows="4" required placeholder="Degrees, diplomas, institutions, years"></textarea>
+        </label>
+        <label>
+          Credentials
+          <textarea name="credentials" rows="3" placeholder="Certificates, licenses, professional memberships"></textarea>
+        </label>
+        <label>
+          Experience
+          <textarea name="experience_summary" rows="3" placeholder="Relevant farming or advisory experience"></textarea>
+        </label>
+        <button class="primary-button full" type="submit">Submit application</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="agrovetModal">
+      <form class="modal-card" id="agrovetForm" method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Agrovet</p>
+            <h2>Register your shop</h2>
+          </div>
+          <button class="icon-close" type="button" data-close-modal>&times;</button>
+        </div>
+        <label>
+          Your name
+          <input name="contact_person_name" type="text" required />
+        </label>
+        <label>
+          Shop name
+          <input name="name" type="text" required />
+        </label>
+        <label>
+          Phone number
+          <input name="phone_number" type="tel" required />
+        </label>
+        <label>
+          Town
+          <input name="location_name" type="text" required />
+        </label>
+        <div class="grid-pair">
+          <label>
+            Latitude
+            <input id="agrovetLatitude" name="location_latitude" type="number" step="any" required />
+          </label>
+          <label>
+            Longitude
+            <input id="agrovetLongitude" name="location_longitude" type="number" step="any" required />
+          </label>
+        </div>
+        <button class="text-button" id="useDeviceLocation" type="button">Use device location</button>
+        <label>
+          Address
+          <input name="address" type="text" />
+        </label>
+        <button class="primary-button full" type="submit">Register agrovet</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="productModal">
+      <form class="modal-card" id="productForm" method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Catalogue</p>
+            <h2>Add product</h2>
+          </div>
+          <button class="icon-close" type="button" data-close-modal>&times;</button>
+        </div>
+        <label>
+          Product name
+          <input name="product_name" type="text" required />
+        </label>
+        <label>
+          Category
+          <input name="category" type="text" required placeholder="fertilizer, pesticide, seeds" />
+        </label>
+        <div class="grid-pair">
+          <label>
+            Quantity
+            <input name="stock_quantity" type="number" min="0" step="1" required />
+          </label>
+          <label>
+            Price
+            <input name="price" type="number" min="0" step="1" required />
+          </label>
+        </div>
+        <label>
+          Unit
+          <input name="unit" type="text" placeholder="kg, L, packet" />
+        </label>
+        <label>
+          Instructions
+          <textarea name="instructions" rows="3" placeholder="Usage, dosage, safety notes"></textarea>
+        </label>
+        <button class="primary-button full" type="submit">Add product</button>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

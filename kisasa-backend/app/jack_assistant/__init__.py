@@ -1,0 +1,2 @@
+"""Jack farm assistant package."""
+

@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: kisasa_backend
+    command: sh -c "alembic -c migrations/alembic.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    environment:
+      # PostgreSQL database
+      DATABASE_URL: ${DATABASE_URL}
+      
+      # Firebase Configuration
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_API_KEY: ${FIREBASE_API_KEY}
+      FIREBASE_AUTH_DOMAIN: ${FIREBASE_AUTH_DOMAIN}
+      FIREBASE_STORAGE_BUCKET: ${FIREBASE_STORAGE_BUCKET}
+      
+      # App Configuration
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: ${DEBUG:-False}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      GROK_API_KEY: ${GROK_API_KEY:-}
+      
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+  # Optional: pgAdmin for database management via Neon
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: kisasa_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@kisasa.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    restart: unless-stopped
