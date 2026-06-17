@@ -281,11 +281,39 @@ button {
 }
 
 .status-strip {
+  align-items: center;
   background: #fff8e7;
   border: 1px solid #f0d18a;
   border-radius: 4px;
   color: #6f4a00;
+  display: flex;
+  gap: 10px;
   padding: 10px 12px;
+}
+
+.status-strip::before {
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: "";
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 14px;
+  width: 14px;
+}
+
+.status-strip[data-tone="info"]::before {
+  animation: spin 0.9s linear infinite;
+}
+
+.status-strip[data-tone="error"]::before {
+  display: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .feed-list {

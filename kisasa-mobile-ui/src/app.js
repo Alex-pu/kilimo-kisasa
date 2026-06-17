@@ -3,6 +3,8 @@ const nativeApiBase =
 const deployedApiBase = import.meta.env.VITE_API_BASE_URL || null;
 const API_BASE =
   localStorage.getItem("kisasaApiBase") || deployedApiBase || nativeApiBase || "http://127.0.0.1:8000";
+const STARTUP_RETRIES = 8;
+const STARTUP_RETRY_DELAY_MS = 4500;
 
 const state = {
   activeIssue: null,
@@ -140,6 +142,39 @@ async function api(path, options = {}) {
   }
 
   return response.status === 204 ? null : response.json();
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isNetworkError(error) {
+  return error instanceof TypeError || /failed to fetch|network|load failed/i.test(error.message || "");
+}
+
+async function waitForApi() {
+  for (let attempt = 1; attempt <= STARTUP_RETRIES; attempt += 1) {
+    try {
+      showStatus(
+        attempt === 1
+          ? "Starting Kisasa..."
+          : `Starting server, please wait (${attempt}/${STARTUP_RETRIES})...`,
+      );
+      await api("/health");
+      clearStatus();
+      return true;
+    } catch (error) {
+      if (!isNetworkError(error) && !String(error.message || "").includes("Request failed (5")) {
+        throw error;
+      }
+      if (attempt === STARTUP_RETRIES) {
+        showStatus("The server is still waking up. Try refreshing in a moment.", "error");
+        return false;
+      }
+      await sleep(STARTUP_RETRY_DELAY_MS);
+    }
+  }
+  return false;
 }
 
 function showStatus(message, tone = "info") {
@@ -833,21 +868,33 @@ function setAuthMode(mode) {
 }
 
 async function loadData() {
-  clearStatus();
-  try {
-    const [issues, agrovets, products] = await Promise.all([
-      api("/api/v1/issues/?limit=50"),
-      api("/api/v1/agrovets/?limit=20"),
-      api("/api/v1/products/?limit=30&in_stock=true"),
-    ]);
-    state.issues = issues;
-    state.agrovets = agrovets;
-    state.products = products;
-    renderFeed();
-    renderSidebars();
-    renderRoute();
-  } catch (error) {
-    showStatus(`Could not load feed: ${error.message}`, "error");
+  for (let attempt = 1; attempt <= STARTUP_RETRIES; attempt += 1) {
+    try {
+      if (attempt > 1) {
+        showStatus(`Loading feed, please wait (${attempt}/${STARTUP_RETRIES})...`);
+      } else {
+        clearStatus();
+      }
+      const [issues, agrovets, products] = await Promise.all([
+        api("/api/v1/issues/?limit=50"),
+        api("/api/v1/agrovets/?limit=20"),
+        api("/api/v1/products/?limit=30&in_stock=true"),
+      ]);
+      state.issues = issues;
+      state.agrovets = agrovets;
+      state.products = products;
+      renderFeed();
+      renderSidebars();
+      renderRoute();
+      clearStatus();
+      return;
+    } catch (error) {
+      if (attempt === STARTUP_RETRIES || !isNetworkError(error)) {
+        showStatus(`Could not load feed: ${error.message}`, "error");
+        return;
+      }
+      await sleep(STARTUP_RETRY_DELAY_MS);
+    }
   }
 }
 
@@ -1475,13 +1522,24 @@ function wireEvents() {
 
 async function init() {
   wireEvents();
-  await loadCurrentUser();
-  await loadExpertApplications();
-  await loadJackKnowledge();
-  await loadMyAgrovet();
   renderAuth();
   renderRoute();
-  loadData();
+
+  const apiReady = await waitForApi();
+  if (!apiReady) return;
+
+  try {
+    await loadCurrentUser();
+    await loadExpertApplications();
+    await loadJackKnowledge();
+    await loadMyAgrovet();
+  } catch (error) {
+    showStatus(`Some account data could not load yet: ${error.message}`, "error");
+  }
+
+  renderAuth();
+  renderRoute();
+  await loadData();
 }
 
 init();
