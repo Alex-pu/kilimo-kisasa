@@ -1,8 +1,16 @@
 const nativeApiBase =
   window.Capacitor?.isNativePlatform?.() ? "http://10.0.2.2:8000" : null;
-const deployedApiBase = import.meta.env.VITE_API_BASE_URL || null;
-const API_BASE =
-  localStorage.getItem("kisasaApiBase") || deployedApiBase || nativeApiBase || "http://127.0.0.1:8000";
+const deployedApiBase = import.meta.env?.VITE_API_BASE_URL || null;
+const defaultApiBase =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://127.0.0.1:8000"
+    : "https://kilimo-kisasa-2sgk.onrender.com";
+const API_BASE = (
+  deployedApiBase ||
+  localStorage.getItem("kisasaApiBase") ||
+  nativeApiBase ||
+  defaultApiBase
+).replace(/\/+$/, "");
 const STARTUP_RETRIES = 8;
 const STARTUP_RETRY_DELAY_MS = 4500;
 
