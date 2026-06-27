@@ -25,7 +25,10 @@ class FirebaseService:
                 # If no credentials file, initialize without credentials (use GOOGLE_APPLICATION_CREDENTIALS)
                 cred = credentials.ApplicationDefault()
             
-            firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(
+                cred,
+                {"storageBucket": settings.firebase_storage_bucket},
+            )
         
         self._initialized = True
     

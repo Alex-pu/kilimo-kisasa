@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     # Local uploads
     uploads_dir: str = str(Path(__file__).resolve().parent.parent / "uploads")
+    upload_storage_backend: str = "auto"
     max_upload_bytes: int = 5 * 1024 * 1024
 
     # Jack assistant fallback
