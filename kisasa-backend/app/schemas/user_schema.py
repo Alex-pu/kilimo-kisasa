@@ -9,7 +9,6 @@ class UserBase(BaseModel):
     email: str
     full_name: str
     role: UserRole = UserRole.FARMER
-    firebase_uid: Optional[str] = None
     phone: Optional[str] = None
     bio: Optional[str] = None
 
@@ -35,7 +34,6 @@ class UserRoleUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: UUID
-    firebase_uid: str
     profile_pic_url: Optional[str] = None
     location_latitude: Optional[float] = None
     location_longitude: Optional[float] = None

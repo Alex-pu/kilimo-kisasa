@@ -1,21 +1,12 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
 from app.api.v1 import api_router
-from app.firebase_service import firebase_service
 from app.models import (
     User, Issue, Comment, Recommendation,
     Agrovet, AgrovetProduct, ExpertEndorsement
 )
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    firebase_service.initialize()
-    yield
 
 
 # Initialize FastAPI app
@@ -26,7 +17,6 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
-    lifespan=lifespan,
 )
 
 # Add CORS middleware

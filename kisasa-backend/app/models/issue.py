@@ -46,7 +46,7 @@ class Issue(Base):
     post_type = Column(Enum(PostType, values_callable=enum_values), nullable=False, default=PostType.ISSUE, index=True)
     category = Column(Enum(IssueCategory, values_callable=enum_values), nullable=False, index=True)
     status = Column(Enum(IssueStatus, values_callable=enum_values), nullable=False, default=IssueStatus.OPEN, index=True)
-    image_urls = Column(StringList(), nullable=True)  # Firebase Storage URLs
+    image_urls = Column(StringList(), nullable=True)
     location_latitude = Column(Float, nullable=True)
     location_longitude = Column(Float, nullable=True)
     location_name = Column(String, nullable=True)

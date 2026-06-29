@@ -18,14 +18,6 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://kisasa_user:kisasa_password@localhost:5432/kisasa_db"
     sqlalchemy_echo: bool = True
     
-    # Firebase
-    firebase_project_id: str
-    firebase_api_key: str
-    firebase_auth_domain: str
-    firebase_storage_bucket: str
-    firebase_credentials_path: str = "./firebase-credentials.json"
-    firebase_credentials_json: Optional[str] = None
-
     # Cloudinary
     cloudinary_url: Optional[str] = None
     

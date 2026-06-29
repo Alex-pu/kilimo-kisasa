@@ -14,7 +14,7 @@ from app.models.user import User, UserRole
 
 JACK_DISPLAY_NAME = "Jack"
 JACK_EMAIL = "jack@kisasa.local"
-JACK_FIREBASE_UID = "jack-assistant-bot"
+JACK_AUTH_SUBJECT = "jack-assistant-bot"
 JACK_MENTION_PATTERN = re.compile(r"(^|\W)@?jack\b", re.IGNORECASE)
 NEARBY_AGROVET_RADIUS_KM = 35
 NEARBY_AGROVET_LIMIT = 5
@@ -394,12 +394,12 @@ def generate_farm_reply(
 
 
 def get_or_create_jack_user(db: Session) -> User:
-    jack = db.query(User).filter(User.firebase_uid == JACK_FIREBASE_UID).first()
+    jack = db.query(User).filter(User.firebase_uid == JACK_AUTH_SUBJECT).first()
     if jack:
         return jack
 
     jack = User(
-        firebase_uid=JACK_FIREBASE_UID,
+        firebase_uid=JACK_AUTH_SUBJECT,
         email=JACK_EMAIL,
         full_name=JACK_DISPLAY_NAME,
         role=UserRole.EXPERT,

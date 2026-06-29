@@ -9,7 +9,6 @@ from app.database import Base, get_db
 from app.models.issue import PostType
 from app.models.uploaded_image import UploadedImage
 from app.models.user import User, UserRole
-from app.firebase_service import _load_firebase_credentials
 
 # Test database setup
 SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///./test.db"
@@ -65,79 +64,13 @@ class TestRoot:
 
 
 class TestAuth:
-    def test_firebase_credentials_json_env_is_supported(self, monkeypatch):
-        """Test Render-style pasted service account JSON can initialize Firebase."""
-        previous_credentials_json = settings.firebase_credentials_json
-        previous_credentials_path = settings.firebase_credentials_path
-        credential_payload = '{"project_id":"test-project","client_email":"test@example.com"}'
-        captured = {}
-
-        def fake_certificate(value):
-            captured["value"] = value
-            return "credential"
-
-        settings.firebase_credentials_json = credential_payload
-        settings.firebase_credentials_path = "./missing-firebase-credentials.json"
-        monkeypatch.setattr("app.firebase_service.credentials.Certificate", fake_certificate)
-
-        try:
-            assert _load_firebase_credentials() == "credential"
-            assert captured["value"]["project_id"] == "test-project"
-        finally:
-            settings.firebase_credentials_json = previous_credentials_json
-            settings.firebase_credentials_path = previous_credentials_path
-
-    def test_render_firebase_secret_file_is_supported(self, monkeypatch, tmp_path):
-        """Test Render Secret File named FIREBASE_CREDENTIALS_PATH can initialize Firebase."""
-        previous_credentials_json = settings.firebase_credentials_json
-        previous_credentials_path = settings.firebase_credentials_path
-        secret_file = tmp_path / "FIREBASE_CREDENTIALS_PATH"
-        secret_file.write_text('{"project_id":"secret-file-project"}')
-        captured = {}
-
-        def fake_certificate(value):
-            captured["value"] = value
-            return "credential"
-
-        settings.firebase_credentials_json = None
-        settings.firebase_credentials_path = "./missing-firebase-credentials.json"
-        monkeypatch.setattr("app.firebase_service.RENDER_FIREBASE_SECRET_FILE", str(secret_file))
-        monkeypatch.setattr("app.firebase_service.credentials.Certificate", fake_certificate)
-
-        try:
-            assert _load_firebase_credentials() == "credential"
-            assert captured["value"] == str(secret_file)
-        finally:
-            settings.firebase_credentials_json = previous_credentials_json
-            settings.firebase_credentials_path = previous_credentials_path
-
-    def test_missing_firebase_credentials_fails_fast(self, monkeypatch):
-        """Test the app does not silently fall back when Firebase credentials are missing."""
-        previous_credentials_json = settings.firebase_credentials_json
-        previous_credentials_path = settings.firebase_credentials_path
-        settings.firebase_credentials_json = None
-        settings.firebase_credentials_path = "./missing-firebase-credentials.json"
-        monkeypatch.setattr("app.firebase_service.RENDER_FIREBASE_SECRET_FILE", "./missing-render-secret")
-
-        try:
-            with pytest.raises(RuntimeError, match="Firebase credentials are required"):
-                _load_firebase_credentials()
-        finally:
-            settings.firebase_credentials_json = previous_credentials_json
-            settings.firebase_credentials_path = previous_credentials_path
-
-    def test_firebase_login_missing_token(self):
-        """Test firebase login without token"""
-        response = client.post("/api/v1/auth/firebase-login", json={})
-        assert response.status_code == 401
-
     def test_refresh_token_missing(self):
         """Test refresh token endpoint without token"""
         response = client.post("/api/v1/auth/refresh", json={})
         assert response.status_code == 400
 
     def test_local_register_returns_token(self):
-        """Test native local signup for the mobile UI"""
+        """Test database-backed signup for the mobile UI"""
         email = f"local-{uuid4()}@kisasa.local"
         response = client.post(
             "/api/v1/auth/local-register",
@@ -151,8 +84,15 @@ class TestAuth:
         assert response.status_code == 200
         assert response.json()["access_token"]
 
+        me_response = client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {response.json()['access_token']}"},
+        )
+        assert me_response.status_code == 200
+        assert me_response.json()["email"] == email
+
     def test_local_login_returns_token(self):
-        """Test native local login for the mobile UI"""
+        """Test database-backed login for the mobile UI"""
         email = f"login-{uuid4()}@kisasa.local"
         client.post(
             "/api/v1/auth/local-register",
@@ -268,7 +208,7 @@ class TestIssues:
         assert uploaded_image["url"] in issue["image_urls"]
         assert issue["images"][0]["id"] == uploaded_image["id"]
 
-    def test_upload_accepts_non_firebase_remote_image_url(self, monkeypatch):
+    def test_upload_accepts_remote_image_url(self, monkeypatch):
         """Test uploads can use any remote storage provider."""
         email = f"remote-upload-{uuid4()}@kisasa.local"
         auth_response = client.post(

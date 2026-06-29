@@ -14,7 +14,7 @@ class Comment(Base):
     author_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     parent_comment_id = Column(GUID(), ForeignKey("comments.id"), nullable=True, index=True)
     content = Column(Text, nullable=False)
-    media_urls = Column(StringList(), nullable=True)  # Firebase Storage URLs
+    media_urls = Column(StringList(), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
