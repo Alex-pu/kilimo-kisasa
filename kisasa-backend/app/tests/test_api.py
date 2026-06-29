@@ -8,6 +8,7 @@ from app.main import app
 from app.database import Base, get_db
 from app.models.issue import PostType
 from app.models.user import User, UserRole
+from app.firebase_service import _load_firebase_credentials
 
 # Test database setup
 SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///./test.db"
@@ -63,6 +64,67 @@ class TestRoot:
 
 
 class TestAuth:
+    def test_firebase_credentials_json_env_is_supported(self, monkeypatch):
+        """Test Render-style pasted service account JSON can initialize Firebase."""
+        previous_credentials_json = settings.firebase_credentials_json
+        previous_credentials_path = settings.firebase_credentials_path
+        credential_payload = '{"project_id":"test-project","client_email":"test@example.com"}'
+        captured = {}
+
+        def fake_certificate(value):
+            captured["value"] = value
+            return "credential"
+
+        settings.firebase_credentials_json = credential_payload
+        settings.firebase_credentials_path = "./missing-firebase-credentials.json"
+        monkeypatch.setattr("app.firebase_service.credentials.Certificate", fake_certificate)
+
+        try:
+            assert _load_firebase_credentials() == "credential"
+            assert captured["value"]["project_id"] == "test-project"
+        finally:
+            settings.firebase_credentials_json = previous_credentials_json
+            settings.firebase_credentials_path = previous_credentials_path
+
+    def test_render_firebase_secret_file_is_supported(self, monkeypatch, tmp_path):
+        """Test Render Secret File named FIREBASE_CREDENTIALS_PATH can initialize Firebase."""
+        previous_credentials_json = settings.firebase_credentials_json
+        previous_credentials_path = settings.firebase_credentials_path
+        secret_file = tmp_path / "FIREBASE_CREDENTIALS_PATH"
+        secret_file.write_text('{"project_id":"secret-file-project"}')
+        captured = {}
+
+        def fake_certificate(value):
+            captured["value"] = value
+            return "credential"
+
+        settings.firebase_credentials_json = None
+        settings.firebase_credentials_path = "./missing-firebase-credentials.json"
+        monkeypatch.setattr("app.firebase_service.RENDER_FIREBASE_SECRET_FILE", str(secret_file))
+        monkeypatch.setattr("app.firebase_service.credentials.Certificate", fake_certificate)
+
+        try:
+            assert _load_firebase_credentials() == "credential"
+            assert captured["value"] == str(secret_file)
+        finally:
+            settings.firebase_credentials_json = previous_credentials_json
+            settings.firebase_credentials_path = previous_credentials_path
+
+    def test_missing_firebase_credentials_fails_fast(self, monkeypatch):
+        """Test the app does not silently fall back when Firebase credentials are missing."""
+        previous_credentials_json = settings.firebase_credentials_json
+        previous_credentials_path = settings.firebase_credentials_path
+        settings.firebase_credentials_json = None
+        settings.firebase_credentials_path = "./missing-firebase-credentials.json"
+        monkeypatch.setattr("app.firebase_service.RENDER_FIREBASE_SECRET_FILE", "./missing-render-secret")
+
+        try:
+            with pytest.raises(RuntimeError, match="Firebase credentials are required"):
+                _load_firebase_credentials()
+        finally:
+            settings.firebase_credentials_json = previous_credentials_json
+            settings.firebase_credentials_path = previous_credentials_path
+
     def test_firebase_login_missing_token(self):
         """Test firebase login without token"""
         response = client.post("/api/v1/auth/firebase-login", json={})
@@ -160,7 +222,7 @@ class TestIssues:
         response = client.get("/api/v1/issues/?category=crop_disease")
         assert response.status_code == 200
 
-    def test_create_issue_with_uploaded_image(self):
+    def test_create_issue_with_uploaded_image(self, monkeypatch):
         """Test creating a Reddit-style image post"""
         email = f"image-post-{uuid4()}@kisasa.local"
         auth_response = client.post(
@@ -174,6 +236,14 @@ class TestIssues:
         )
         token = auth_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
+        firebase_url = (
+            "https://firebasestorage.googleapis.com/v0/b/test-bucket/o/"
+            "uploads%2Fimages%2Fcrop.png?alt=media&token=test-token"
+        )
+        monkeypatch.setattr(
+            "app.api.v1.uploads.store_image_in_firebase",
+            lambda content, stored_filename, content_type: firebase_url,
+        )
 
         upload_response = client.post(
             "/api/v1/uploads/images",
@@ -182,7 +252,7 @@ class TestIssues:
         )
         assert upload_response.status_code == 200
         uploaded_image = upload_response.json()
-        assert uploaded_image["url"].startswith("/uploads/images/")
+        assert uploaded_image["url"] == firebase_url
 
         issue_response = client.post(
             "/api/v1/issues/",

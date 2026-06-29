@@ -1,7 +1,34 @@
+import json
+import os
+
 import firebase_admin
 from firebase_admin import credentials, auth
 from app.config import settings
-import os
+
+RENDER_FIREBASE_SECRET_FILE = "/etc/secrets/FIREBASE_CREDENTIALS_PATH"
+
+
+def _load_firebase_credentials():
+    credentials_json = settings.firebase_credentials_json
+    credentials_path = settings.firebase_credentials_path
+
+    if credentials_json:
+        return credentials.Certificate(json.loads(credentials_json))
+
+    if credentials_path.strip().startswith("{"):
+        return credentials.Certificate(json.loads(credentials_path))
+
+    if os.path.exists(credentials_path):
+        return credentials.Certificate(credentials_path)
+
+    if os.path.exists(RENDER_FIREBASE_SECRET_FILE):
+        return credentials.Certificate(RENDER_FIREBASE_SECRET_FILE)
+
+    raise RuntimeError(
+        "Firebase credentials are required. Set FIREBASE_CREDENTIALS_JSON, "
+        "set FIREBASE_CREDENTIALS_PATH to a real file path, or add a Render "
+        "Secret File named FIREBASE_CREDENTIALS_PATH."
+    )
 
 
 class FirebaseService:
@@ -14,38 +41,43 @@ class FirebaseService:
         return cls._instance
     
     def __init__(self):
+        pass
+
+    def initialize(self) -> None:
         if self._initialized:
             return
-        
+
+        if settings.upload_storage_backend.strip().lower() != "firebase":
+            raise RuntimeError("UPLOAD_STORAGE_BACKEND must be set to firebase.")
+
         # Initialize Firebase Admin SDK
         if not firebase_admin._apps:
-            if os.path.exists(settings.firebase_credentials_path):
-                cred = credentials.Certificate(settings.firebase_credentials_path)
-            else:
-                # If no credentials file, initialize without credentials (use GOOGLE_APPLICATION_CREDENTIALS)
-                cred = credentials.ApplicationDefault()
-            
+            cred = _load_firebase_credentials()
+
             firebase_admin.initialize_app(
                 cred,
                 {"storageBucket": settings.firebase_storage_bucket},
             )
-        
+
         self._initialized = True
+
+    def ensure_initialized(self) -> None:
+        self.initialize()
     
-    @staticmethod
-    def verify_id_token(token: str) -> dict:
+    def verify_id_token(self, token: str) -> dict:
         """
         Verify Firebase ID token and return user claims
         """
+        self.ensure_initialized()
         try:
             decoded_token = auth.verify_id_token(token)
             return decoded_token
         except Exception as e:
             raise Exception(f"Invalid Firebase token: {str(e)}")
     
-    @staticmethod
-    def get_user(uid: str) -> dict:
+    def get_user(self, uid: str) -> dict:
         """Get user from Firebase by UID"""
+        self.ensure_initialized()
         try:
             user = auth.get_user(uid)
             return {
@@ -58,9 +90,9 @@ class FirebaseService:
         except Exception as e:
             raise Exception(f"User not found: {str(e)}")
     
-    @staticmethod
-    def create_user(email: str, password: str, display_name: str = None) -> str:
+    def create_user(self, email: str, password: str, display_name: str = None) -> str:
         """Create new Firebase user and return UID"""
+        self.ensure_initialized()
         try:
             user = auth.create_user(
                 email=email,
@@ -71,9 +103,9 @@ class FirebaseService:
         except Exception as e:
             raise Exception(f"Failed to create user: {str(e)}")
     
-    @staticmethod
-    def update_user_profile(uid: str, display_name: str = None, photo_url: str = None) -> None:
+    def update_user_profile(self, uid: str, display_name: str = None, photo_url: str = None) -> None:
         """Update Firebase user profile"""
+        self.ensure_initialized()
         try:
             auth.update_user(
                 uid,

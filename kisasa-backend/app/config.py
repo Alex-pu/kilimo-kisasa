@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     firebase_auth_domain: str
     firebase_storage_bucket: str
     firebase_credentials_path: str = "./firebase-credentials.json"
+    firebase_credentials_json: Optional[str] = None
     
     # JWT
     secret_key: str
@@ -41,7 +42,7 @@ class Settings(BaseSettings):
 
     # Local uploads
     uploads_dir: str = str(Path(__file__).resolve().parent.parent / "uploads")
-    upload_storage_backend: str = "auto"
+    upload_storage_backend: str = "firebase"
     max_upload_bytes: int = 5 * 1024 * 1024
 
     # Jack assistant fallback

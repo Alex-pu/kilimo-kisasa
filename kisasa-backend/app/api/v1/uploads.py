@@ -1,4 +1,3 @@
-from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -24,25 +23,8 @@ ALLOWED_IMAGE_TYPES = {
 }
 
 
-def should_use_firebase_storage() -> bool:
-    backend = settings.upload_storage_backend.strip().lower()
-    if backend == "firebase":
-        return True
-    if backend == "local":
-        return False
-    return settings.environment.strip().lower() in {"production", "prod"}
-
-
-def store_image_locally(content: bytes, stored_filename: str) -> str:
-    image_dir = Path(settings.uploads_dir) / "images"
-    image_dir.mkdir(parents=True, exist_ok=True)
-    stored_path = image_dir / stored_filename
-    stored_path.write_bytes(content)
-    return f"/uploads/images/{stored_filename}"
-
-
 def store_image_in_firebase(content: bytes, stored_filename: str, content_type: str) -> str:
-    firebase_service
+    firebase_service.ensure_initialized()
     bucket = storage.bucket(settings.firebase_storage_bucket)
     blob = bucket.blob(f"uploads/images/{stored_filename}")
     download_token = str(uuid4())
@@ -85,10 +67,7 @@ async def upload_image(
     stored_filename = f"{uuid4()}{extension}"
     content_type = image.content_type or "application/octet-stream"
     try:
-        if should_use_firebase_storage():
-            image_url = store_image_in_firebase(content, stored_filename, content_type)
-        else:
-            image_url = store_image_locally(content, stored_filename)
+        image_url = store_image_in_firebase(content, stored_filename, content_type)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
