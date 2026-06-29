@@ -163,6 +163,23 @@ class TestIssues:
         response = client.get("/api/v1/issues/?category=crop_disease")
         assert response.status_code == 200
 
+    def test_list_issues_includes_comment_count(self):
+        """Test feed issue cards include thread counts."""
+        headers, issue_id = self.create_user_and_issue()
+        client.post(
+            f"/api/v1/issues/{issue_id}/comments/",
+            headers=headers,
+            json={"content": "Try checking soil moisture first."},
+        )
+
+        response = client.get("/api/v1/issues/", headers=headers)
+
+        assert response.status_code == 200
+        issue = response.json()[0]
+        assert issue["id"] == issue_id
+        assert issue["comments_count"] == 1
+        assert issue["recommendations_count"] == 0
+
     def test_create_issue_with_uploaded_image(self, monkeypatch):
         """Test creating a Reddit-style image post"""
         email = f"image-post-{uuid4()}@kisasa.local"

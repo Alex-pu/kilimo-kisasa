@@ -42,6 +42,8 @@ class IssueResponse(IssueBase):
     views_count: int
     score: int = 0
     my_vote: Optional[int] = None
+    comments_count: int = 0
+    recommendations_count: int = 0
     created_at: datetime
     updated_at: datetime
     
@@ -51,8 +53,6 @@ class IssueResponse(IssueBase):
 
 class IssueDetailResponse(IssueResponse):
     creator: Optional[dict] = None
-    comments_count: Optional[int] = 0
-    recommendations_count: Optional[int] = 0
 
 
 class IssueVoteRequest(BaseModel):

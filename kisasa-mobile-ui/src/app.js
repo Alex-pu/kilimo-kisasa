@@ -246,6 +246,12 @@ function readablePostType(postType) {
   return labels[postType] || "issue";
 }
 
+function commentCount(issue) {
+  const loadedComments = state.commentsByIssue[issue.id];
+  if (loadedComments) return loadedComments.length;
+  return Number(issue.comments_count || 0);
+}
+
 async function loadCurrentUser() {
   if (!state.token) {
     state.user = null;
@@ -355,7 +361,7 @@ function renderFeed() {
               }
               <p class="post-description">${escapeHtml(issue.description)}</p>
               <div class="post-actions">
-                <button class="action" type="button" data-action="comments" data-issue-id="${issue.id}">Comments</button>
+                <button class="action" type="button" data-action="comments" data-issue-id="${issue.id}">Comments (${commentCount(issue)})</button>
                 <button class="action" type="button" data-action="recommendations" data-issue-id="${issue.id}">Expert recommendations</button>
                 <button class="action" type="button" data-action="share" data-issue-id="${issue.id}">Share</button>
               </div>
@@ -730,7 +736,7 @@ function renderInlinePanel(issue) {
     <section class="inline-thread" data-inline-thread="${issue.id}">
       <div class="inline-thread-header">
         <div class="inline-tabs">
-          <button class="action ${tab === "comments" ? "active" : ""}" type="button" data-action="comments" data-issue-id="${issue.id}">Comments</button>
+          <button class="action ${tab === "comments" ? "active" : ""}" type="button" data-action="comments" data-issue-id="${issue.id}">Comments (${commentCount(issue)})</button>
           <button class="action ${tab === "recommendations" ? "active" : ""}" type="button" data-action="recommendations" data-issue-id="${issue.id}">Expert recommendations</button>
           <button class="action ${tab === "share" ? "active" : ""}" type="button" data-action="share" data-issue-id="${issue.id}">Share</button>
         </div>
@@ -779,6 +785,15 @@ async function loadInlineThreads(issueId) {
   ]);
   state.commentsByIssue[issueId] = comments;
   state.recommendationsByIssue[issueId] = recommendations;
+  state.issues = state.issues.map(issue =>
+    String(issue.id) === String(issueId)
+      ? {
+          ...issue,
+          comments_count: comments.length,
+          recommendations_count: recommendations.length,
+        }
+      : issue,
+  );
   renderFeed();
 }
 

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from app.database import get_db
+from app.models.comment import Comment
 from app.models.issue import Issue, IssueStatus, PostType
 from app.models.issue_vote import IssueVote
 from app.models.product import AgrovetProduct
@@ -52,6 +53,35 @@ def attach_my_votes(db: Session, issues: List[Issue], current_user: User | None)
     for issue in issues:
         issue.my_vote = votes_by_issue.get(issue.id, 0)
     return issues
+
+
+def attach_thread_counts(db: Session, issues: List[Issue]):
+    if not issues:
+        return issues
+
+    issue_ids = [issue.id for issue in issues]
+    comment_counts = dict(
+        db.query(Comment.issue_id, func.count(Comment.id))
+        .filter(Comment.issue_id.in_(issue_ids))
+        .group_by(Comment.issue_id)
+        .all()
+    )
+    recommendation_counts = dict(
+        db.query(Recommendation.issue_id, func.count(Recommendation.id))
+        .filter(Recommendation.issue_id.in_(issue_ids))
+        .group_by(Recommendation.issue_id)
+        .all()
+    )
+
+    for issue in issues:
+        issue.comments_count = comment_counts.get(issue.id, 0)
+        issue.recommendations_count = recommendation_counts.get(issue.id, 0)
+    return issues
+
+
+def attach_issue_metadata(db: Session, issues: List[Issue], current_user: User | None):
+    attach_thread_counts(db, issues)
+    return attach_my_votes(db, issues, current_user)
 
 
 @router.post("/", response_model=IssueResponse)
@@ -105,6 +135,9 @@ async def create_issue(
 
     db.commit()
     db.refresh(issue)
+    issue.comments_count = 0
+    issue.recommendations_count = 0
+    issue.my_vote = 0
     
     return issue
 
@@ -132,7 +165,7 @@ async def list_issues(
         query = query.filter(Issue.status == status)
     
     issues = query.order_by(Issue.created_at.desc()).offset(skip).limit(limit).all()
-    return attach_my_votes(db, issues, current_user)
+    return attach_issue_metadata(db, issues, current_user)
 
 
 @router.get("/nearby/", response_model=List[IssueResponse])
@@ -159,7 +192,7 @@ async def get_nearby_issues(
         haversine_km(longitude, latitude, issue.location_longitude, issue.location_latitude) <= radius_km
     ][:limit]
     
-    return attach_my_votes(db, nearby, current_user)
+    return attach_issue_metadata(db, nearby, current_user)
 
 
 @router.get("/{issue_id}/nearby-products", response_model=List[NearbyRecommendedProduct])
