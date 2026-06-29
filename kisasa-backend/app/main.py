@@ -1,10 +1,8 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.api.v1 import api_router
 from app.firebase_service import firebase_service
@@ -47,10 +45,6 @@ app.add_middleware(
 
 # Include API router
 app.include_router(api_router)
-
-uploads_path = Path(settings.uploads_dir)
-uploads_path.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
 
 
 @app.get("/")

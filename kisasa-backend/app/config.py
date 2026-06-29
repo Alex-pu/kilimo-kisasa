@@ -2,7 +2,6 @@ import json
 
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
-from pathlib import Path
 from typing import Any
 from typing import Optional
 
@@ -26,6 +25,9 @@ class Settings(BaseSettings):
     firebase_storage_bucket: str
     firebase_credentials_path: str = "./firebase-credentials.json"
     firebase_credentials_json: Optional[str] = None
+
+    # Cloudinary
+    cloudinary_url: Optional[str] = None
     
     # JWT
     secret_key: str
@@ -40,9 +42,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
-    # Local uploads
-    uploads_dir: str = str(Path(__file__).resolve().parent.parent / "uploads")
-    upload_storage_backend: str = "firebase"
+    # Uploads
     max_upload_bytes: int = 5 * 1024 * 1024
 
     # Jack assistant fallback
@@ -112,6 +112,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 settings = Settings()

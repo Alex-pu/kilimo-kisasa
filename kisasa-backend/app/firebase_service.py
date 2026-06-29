@@ -47,9 +47,6 @@ class FirebaseService:
         if self._initialized:
             return
 
-        if settings.upload_storage_backend.strip().lower() != "firebase":
-            raise RuntimeError("UPLOAD_STORAGE_BACKEND must be set to firebase.")
-
         # Initialize Firebase Admin SDK
         if not firebase_admin._apps:
             cred = _load_firebase_credentials()

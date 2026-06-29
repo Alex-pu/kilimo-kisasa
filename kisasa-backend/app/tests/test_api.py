@@ -7,6 +7,7 @@ from app.config import settings
 from app.main import app
 from app.database import Base, get_db
 from app.models.issue import PostType
+from app.models.uploaded_image import UploadedImage
 from app.models.user import User, UserRole
 from app.firebase_service import _load_firebase_credentials
 
@@ -236,13 +237,10 @@ class TestIssues:
         )
         token = auth_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
-        firebase_url = (
-            "https://firebasestorage.googleapis.com/v0/b/test-bucket/o/"
-            "uploads%2Fimages%2Fcrop.png?alt=media&token=test-token"
-        )
+        cloudinary_url = "https://res.cloudinary.com/test-cloud/image/upload/v1/kisasa/uploads/images/crop.png"
         monkeypatch.setattr(
-            "app.api.v1.uploads.store_image_in_firebase",
-            lambda content, stored_filename, content_type: firebase_url,
+            "app.api.v1.uploads.store_image_in_cloudinary",
+            lambda content, stored_filename, content_type: cloudinary_url,
         )
 
         upload_response = client.post(
@@ -252,7 +250,7 @@ class TestIssues:
         )
         assert upload_response.status_code == 200
         uploaded_image = upload_response.json()
-        assert uploaded_image["url"] == firebase_url
+        assert uploaded_image["url"] == cloudinary_url
 
         issue_response = client.post(
             "/api/v1/issues/",
@@ -269,6 +267,67 @@ class TestIssues:
         issue = issue_response.json()
         assert uploaded_image["url"] in issue["image_urls"]
         assert issue["images"][0]["id"] == uploaded_image["id"]
+
+    def test_upload_accepts_non_firebase_remote_image_url(self, monkeypatch):
+        """Test uploads can use any remote storage provider."""
+        email = f"remote-upload-{uuid4()}@kisasa.local"
+        auth_response = client.post(
+            "/api/v1/auth/local-register",
+            json={
+                "identity": email,
+                "display_name": "Remote Upload Farmer",
+                "password": "password123",
+                "password_verify": "password123",
+            },
+        )
+        headers = {"Authorization": f"Bearer {auth_response.json()['access_token']}"}
+        remote_url = "https://kisasa-images.s3.amazonaws.com/uploads/crop.jpg"
+        monkeypatch.setattr(
+            "app.api.v1.uploads.store_image_in_cloudinary",
+            lambda content, stored_filename, content_type: remote_url,
+        )
+
+        upload_response = client.post(
+            "/api/v1/uploads/images",
+            headers=headers,
+            files={"image": ("crop.jpg", b"fake-jpg-bytes", "image/jpeg")},
+        )
+
+        assert upload_response.status_code == 200
+        assert upload_response.json()["url"] == remote_url
+
+    def test_upload_rejects_local_image_url(self, monkeypatch):
+        """Test uploads cannot save local /uploads image references."""
+        email = f"local-upload-{uuid4()}@kisasa.local"
+        auth_response = client.post(
+            "/api/v1/auth/local-register",
+            json={
+                "identity": email,
+                "display_name": "Local Upload Farmer",
+                "password": "password123",
+                "password_verify": "password123",
+            },
+        )
+        headers = {"Authorization": f"Bearer {auth_response.json()['access_token']}"}
+        monkeypatch.setattr(
+            "app.api.v1.uploads.store_image_in_cloudinary",
+            lambda content, stored_filename, content_type: f"/uploads/images/{stored_filename}",
+        )
+
+        upload_response = client.post(
+            "/api/v1/uploads/images",
+            headers=headers,
+            files={"image": ("crop.jpg", b"fake-jpg-bytes", "image/jpeg")},
+        )
+
+        assert upload_response.status_code == 502
+        assert upload_response.json()["detail"] == "Image storage returned a non-remote URL"
+
+        db = TestingSessionLocal()
+        try:
+            assert db.query(UploadedImage).count() == 0
+        finally:
+            db.close()
 
     def test_user_can_upvote_downvote_and_clear_issue_vote(self):
         """Test Reddit-style issue voting"""
