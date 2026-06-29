@@ -6,7 +6,8 @@ from uuid import uuid4
 from app.config import settings
 from app.main import app
 from app.database import Base, get_db
-from app.models.issue import PostType
+from app.jack_assistant.service import _build_jack_messages
+from app.models.issue import Issue, PostType
 from app.models.uploaded_image import UploadedImage
 from app.models.user import User, UserRole
 
@@ -537,6 +538,41 @@ class TestThreads:
         assert "Nearby agrovet inventory" in captured["context_text"]
         assert "Ruiru Farm Inputs" in captured["context_text"]
         assert "Coffee foliar feed" in captured["context_text"]
+
+    def test_jack_prompt_building_prioritizes_post_description_constraints(self):
+        farmer_headers, _ = self.create_user_and_issue()
+        issue_payload = client.post(
+            "/api/v1/issues/",
+            headers=farmer_headers,
+            json={
+                "title": "Aphids in my small family garden",
+                "description": (
+                    "I have a small garden for family consumption. Aphids are a problem, "
+                    "but I do not want to buy chemicals and prefer a home remedy."
+                ),
+                "category": "pest_management",
+                "location_name": "Nairobi, Kenya",
+            },
+        ).json()
+
+        db = TestingSessionLocal()
+        try:
+            issue = db.query(Issue).filter(Issue.id == issue_payload["id"]).first()
+            messages = _build_jack_messages(
+                "@jack, what can I do?",
+                issue=issue,
+            )
+        finally:
+            db.close()
+
+        system_message = messages[0]["content"]
+        user_message = messages[-1]["content"]
+        assert "primary source of facts and constraints" in system_message
+        assert "answer the latest comment as a follow-up" in system_message
+        assert "Farmer's description" in user_message
+        assert "small garden for family consumption" in user_message
+        assert "do not want to buy chemicals" in user_message
+        assert "home remedy" in user_message
 
     def test_jack_local_fallback_reads_post_context_for_pesticide_question(self):
         farmer_headers, _ = self.create_user_and_issue()

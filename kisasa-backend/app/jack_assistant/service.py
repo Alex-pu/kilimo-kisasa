@@ -231,6 +231,20 @@ def _format_farmer_context(
     return "\n".join(parts)
 
 
+def _format_post_context(issue: Issue) -> str:
+    lines = [
+        "Post context. Treat this as the primary case file for the farmer's question:",
+        f"- Category: {_readable_enum(issue.category)}",
+        f"- Title: {issue.title}",
+        f"- Farmer's description: {issue.description}",
+    ]
+    if issue.is_urgent:
+        lines.append("- Farmer marked this as urgent.")
+    if issue.location_name:
+        lines.append(f"- Post location: {issue.location_name}")
+    return "\n".join(lines)
+
+
 def _build_jack_messages(
     prompt: str,
     issue: Issue | None = None,
@@ -241,12 +255,7 @@ def _build_jack_messages(
     location_context = _format_farmer_context(issue, farmer_context)
     context_parts = []
     if issue:
-        context_parts.append(
-            "Post context:"
-            f"\n- Category: {_readable_enum(issue.category)}"
-            f"\n- Title: {issue.title}"
-            f"\n- Description: {issue.description}"
-        )
+        context_parts.append(_format_post_context(issue))
     if location_context:
         context_parts.append(f"Location context:\n{location_context}")
     if context_text:
@@ -257,7 +266,12 @@ def _build_jack_messages(
             "role": "system",
             "content": (
             "You are Jack, a practical farm assistant for Kenyan farmers. "
-            "Give concise, safe agricultural guidance. Use farmer location context for crop, weather, "
+            "Give concise, safe agricultural guidance. If post context is provided, treat the farmer's "
+            "post description as the primary source of facts and constraints, and answer the latest "
+            "comment as a follow-up to that post rather than as an isolated question. Preserve stated "
+            "constraints and preferences such as home consumption, low budget, avoiding chemicals, "
+            "organic/home remedies, safety around family meals, crop stage, location, and what the "
+            "farmer has already tried. Use farmer location context for crop, weather, "
             "soil, pest, seasonality, and nearby-input advice when it is provided. When nearby agrovet inventory "
             "is provided, you may mention the nearest relevant shop and product, but do not invent shops, products, "
             "prices, stock, an exact address, or weather observation. At the end, direct the farmer to visit or "
